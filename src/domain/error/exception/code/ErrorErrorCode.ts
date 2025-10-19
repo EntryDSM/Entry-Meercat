@@ -1,0 +1,4 @@
+export enum ErrorErrorCode {
+  ERROR_NOT_FOUND = 'ERROR_010101',
+  INVALID_ERROR_REPORT = 'ERROR_010102',
+}
