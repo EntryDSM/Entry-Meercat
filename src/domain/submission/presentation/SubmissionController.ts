@@ -8,14 +8,10 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
 import { SubmissionService } from '../service/SubmissionService';
-import { StartSubmissionRequest } from './dto/request/StartSubmissionRequest';
-import { ProgressSubmissionRequest } from './dto/request/ProgressSubmissionRequest';
-import { CompleteSubmissionRequest } from './dto/request/CompleteSubmissionRequest';
-import { FailSubmissionRequest } from './dto/request/FailSubmissionRequest';
-import { CancelSubmissionRequest } from './dto/request/CancelSubmissionRequest';
-import { AbandonSubmissionRequest } from './dto/request/AbandonSubmissionRequest';
-import { StartSubmissionResponse } from './dto/response/StartSubmissionResponse';
-import { CancelSubmissionResponse } from './dto/response/CancelSubmissionResponse';
+import { RecordSubmissionSuccessRequest } from './dto/request/RecordSubmissionSuccessRequest';
+import { RecordSubmissionCancelRequest } from './dto/request/RecordSubmissionCancelRequest';
+import { RecordCancelSuccessRequest } from './dto/request/RecordCancelSuccessRequest';
+import { RecordCancelCancelRequest } from './dto/request/RecordCancelCancelRequest';
 
 @ApiTags('submission')
 @Controller('v1/submission')
@@ -23,76 +19,57 @@ import { CancelSubmissionResponse } from './dto/response/CancelSubmissionRespons
 export class SubmissionController {
   constructor(private readonly submissionService: SubmissionService) {}
 
-  @Post('start')
-  @ApiOperation({ summary: '원서접수 시작' })
-  @ApiResponse({ status: 200, type: StartSubmissionResponse })
-  async startSubmission(
-    @Body() request: StartSubmissionRequest,
-  ): Promise<StartSubmissionResponse> {
-    return this.submissionService.startSubmission(request);
-  }
-
-  @Post('progress')
+  @Post('submission/success')
   @HttpCode(204)
-  @ApiOperation({ summary: '원서접수 진행' })
+  @ApiOperation({ summary: '원서 접수 성공 기록' })
   @ApiResponse({ status: 204, description: 'No Content' })
-  async progressSubmission(
-    @Body() request: ProgressSubmissionRequest,
+  async recordSubmissionSuccess(
+    @Body() request: RecordSubmissionSuccessRequest,
   ): Promise<void> {
-    await this.submissionService.updateProgress(
+    await this.submissionService.recordSubmissionSuccess(
+      request.sessionId,
       request.submissionId,
-      request.formStep,
-      request.formCompletion,
     );
   }
 
-  @Post('complete')
+  @Post('submission/cancel')
   @HttpCode(204)
-  @ApiOperation({ summary: '원서접수 완료' })
+  @ApiOperation({ summary: '원서 접수 취소 기록' })
   @ApiResponse({ status: 204, description: 'No Content' })
-  async completeSubmission(
-    @Body() request: CompleteSubmissionRequest,
+  async recordSubmissionCancel(
+    @Body() request: RecordSubmissionCancelRequest,
   ): Promise<void> {
-    await this.submissionService.completeSubmission(request.submissionId);
-  }
-
-  @Post('failed')
-  @HttpCode(204)
-  @ApiOperation({ summary: '원서접수 실패' })
-  @ApiResponse({ status: 204, description: 'No Content' })
-  async failedSubmission(
-    @Body() request: FailSubmissionRequest,
-  ): Promise<void> {
-    await this.submissionService.failSubmission(
-      request.submissionId,
-      request.errorMessage,
-    );
-  }
-
-  @Post('cancel')
-  @ApiOperation({ summary: '원서접수 취소 시도' })
-  @ApiResponse({ status: 200, type: CancelSubmissionResponse })
-  async cancelSubmission(
-    @Body() request: CancelSubmissionRequest,
-  ): Promise<CancelSubmissionResponse> {
-    return this.submissionService.cancelSubmission(
+    await this.submissionService.recordSubmissionCancel(
       request.sessionId,
       request.submissionId,
       request.reason,
     );
   }
 
-  @Post('abandon')
+  @Post('cancel/success')
   @HttpCode(204)
-  @ApiOperation({ summary: '원서접수 미제출 이탈' })
+  @ApiOperation({ summary: '원서 접수 취소 성공 기록' })
   @ApiResponse({ status: 204, description: 'No Content' })
-  async abandonSubmission(
-    @Body() request: AbandonSubmissionRequest,
+  async recordCancelSuccess(
+    @Body() request: RecordCancelSuccessRequest,
   ): Promise<void> {
-    await this.submissionService.abandonSubmission(
+    await this.submissionService.recordCancelSuccess(
+      request.sessionId,
       request.submissionId,
-      request.lastStep,
-      request.lastCompletion,
+    );
+  }
+
+  @Post('cancel/cancel')
+  @HttpCode(204)
+  @ApiOperation({ summary: '원서 접수 취소 취소 기록' })
+  @ApiResponse({ status: 204, description: 'No Content' })
+  async recordCancelCancel(
+    @Body() request: RecordCancelCancelRequest,
+  ): Promise<void> {
+    await this.submissionService.recordCancelCancel(
+      request.sessionId,
+      request.submissionId,
+      request.reason,
     );
   }
 }

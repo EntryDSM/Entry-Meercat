@@ -308,21 +308,21 @@ export class DashboardQueryService {
     // 원서 제출 이벤트 통계 (최근 6시간 및 전체)
     const submissionSuccessLastHour = await this.submissionEventRepository.count({
       where: {
-        eventType: SubmissionEventType.SUCCESS,
+        eventType: SubmissionEventType.SUBMISSION_SUCCESS,
         createdAt: MoreThan(oneHourAgo),
       },
     });
     const submissionCancelledLastHour = await this.submissionEventRepository.count({
       where: {
-        eventType: SubmissionEventType.CANCELLED,
+        eventType: SubmissionEventType.SUBMISSION_CANCEL,
         createdAt: MoreThan(oneHourAgo),
       },
     });
     const submissionSuccessTotal = await this.submissionEventRepository.count({
-      where: { eventType: SubmissionEventType.SUCCESS },
+      where: { eventType: SubmissionEventType.SUBMISSION_SUCCESS },
     });
     const submissionCancelledTotal = await this.submissionEventRepository.count({
-      where: { eventType: SubmissionEventType.CANCELLED },
+      where: { eventType: SubmissionEventType.SUBMISSION_CANCEL },
     });
 
     // 서버 타임아웃 집계
