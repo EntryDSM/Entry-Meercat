@@ -23,6 +23,15 @@ export class ErrorItemResponse {
   @ApiProperty({ description: '에러 메시지', example: 'Failed to load resource', nullable: true })
   message: string | null;
 
+  @ApiProperty({ description: '엔드포인트 (SERVER만)', example: '/api/v1/users', nullable: true })
+  endpoint?: string | null;
+
+  @ApiProperty({ description: 'HTTP 메서드 (SERVER만)', example: 'GET', nullable: true })
+  httpMethod?: string | null;
+
+  @ApiProperty({ description: 'HTTP 상태 코드 (SERVER만)', example: 500, nullable: true })
+  httpStatus?: number | null;
+
   @ApiProperty({ description: '생성 시간', example: '2025-01-15T10:30:00Z' })
   createdAt: Date;
 

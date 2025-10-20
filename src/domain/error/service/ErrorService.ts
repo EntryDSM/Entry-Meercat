@@ -302,6 +302,9 @@ export class ErrorService {
       errorCategory: error.errorCategory,
       errorCode: error.errorCode,
       message: error.message,
+      endpoint: error.endpoint,
+      httpMethod: error.httpMethod,
+      httpStatus: error.httpStatus,
       createdAt: error.createdAt,
     }));
 

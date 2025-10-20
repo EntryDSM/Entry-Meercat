@@ -10,17 +10,10 @@ async function bootstrap() {
     // 관리자 계정 초기화
     await initializeAdminAccount(app);
 
-    app.enableCors({
-        origin: [
-            '*'
-        ],
-        methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-        allowedHeaders: 'Content-Type, Accept, Authorization',
-        credentials: true,
-        preflightContinue: false,
-        optionsSuccessStatus: 204,
-    });
+    // CORS 설정 - 모든 출처 허용
+    app.enableCors();
 
+    // 글로벌 검증 파이프
     app.useGlobalPipes(
         new ValidationPipe({
             whitelist: true,
@@ -29,6 +22,7 @@ async function bootstrap() {
         }),
     );
 
+    // Swagger 설정
     const config = new DocumentBuilder()
         .setTitle('Entry Meercat APM API')
         .setDescription('EntryDSM Application Performance Monitoring API Documentation')
@@ -50,7 +44,6 @@ async function bootstrap() {
 
     const port = process.env.PORT || 3000;
     await app.listen(port);
-
     console.log(`
     Entry Meercat APM Server is running on: http://localhost:${port}
     Swagger API Documentation: http://localhost:${port}/api
@@ -72,7 +65,6 @@ async function initializeAdminAccount(app: any): Promise<void> {
 
     try {
         const existingAdmin = await authService.findAdminByUsername(username);
-
         if (!existingAdmin) {
             await authService.createAdmin(username, password);
             console.log(`✅ 관리자 계정이 생성되었습니다: ${username}`);

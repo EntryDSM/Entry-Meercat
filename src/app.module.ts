@@ -22,6 +22,7 @@ import { ServerError } from './domain/error/entity/ServerError.entity';
 import { CriticalError } from './domain/error/entity/CriticalError.entity';
 import { SubmissionSession } from './domain/submission/entity/SubmissionSession.entity';
 import { SubmissionCancellation } from './domain/submission/entity/SubmissionCancellation.entity';
+import { SubmissionEvent } from './domain/submission/entity/SubmissionEvent.entity';
 import { PdfOperation } from './domain/pdf/entity/PdfOperation.entity';
 import { NetworkTest } from './domain/network/entity/NetworkTest.entity';
 
@@ -48,6 +49,7 @@ import { NetworkTest } from './domain/network/entity/NetworkTest.entity';
         CriticalError,
         SubmissionSession,
         SubmissionCancellation,
+        SubmissionEvent,
         PdfOperation,
         NetworkTest,
       ],
