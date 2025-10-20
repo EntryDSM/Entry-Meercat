@@ -198,6 +198,20 @@ export class ConcurrentLastHourDto {
   avg: number;
 }
 
+export class SubmissionEventsDto {
+  @ApiProperty({ description: '최근 6시간 이벤트' })
+  lastHour: {
+    success: number;
+    cancelled: number;
+  };
+
+  @ApiProperty({ description: '전체 이벤트' })
+  total: {
+    success: number;
+    cancelled: number;
+  };
+}
+
 export class DashboardRealtimeResponse {
   @ApiProperty({ type: RealtimeDto })
   realtime: RealtimeDto;
@@ -240,4 +254,7 @@ export class DashboardRealtimeResponse {
 
   @ApiProperty({ type: ConcurrentLastHourDto })
   concurrentLastHour: ConcurrentLastHourDto;
+
+  @ApiProperty({ type: SubmissionEventsDto, description: '원서 제출 성공/취소 이벤트 모니터링' })
+  submissionEvents: SubmissionEventsDto;
 }

@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan, Between, IsNull, Not, MoreThanOrEqual, LessThan } from 'typeorm';
+import { Repository, MoreThan, Between, IsNull, Not, MoreThanOrEqual, LessThan, Like, In, Or } from 'typeorm';
 import { Session, UserStatus } from '../../session/entity/Session.entity';
 import { HealthCheck } from '../../monitoring/entity/HealthCheck.entity';
 import { ApiLog } from '../../monitoring/entity/ApiLog.entity';
 import { SubmissionSession, SubmissionStatus } from '../../submission/entity/SubmissionSession.entity';
 import { SubmissionCancellation, CancelStatus } from '../../submission/entity/SubmissionCancellation.entity';
+import { SubmissionEvent, SubmissionEventType } from '../../submission/entity/SubmissionEvent.entity';
 import { ClientError } from '../../error/entity/ClientError.entity';
 import { ServerError } from '../../error/entity/ServerError.entity';
 import { CriticalError } from '../../error/entity/CriticalError.entity';
@@ -34,6 +35,8 @@ export class DashboardQueryService {
     private readonly submissionRepository: Repository<SubmissionSession>,
     @InjectRepository(SubmissionCancellation)
     private readonly cancellationRepository: Repository<SubmissionCancellation>,
+    @InjectRepository(SubmissionEvent)
+    private readonly submissionEventRepository: Repository<SubmissionEvent>,
     @InjectRepository(ClientError)
     private readonly clientErrorRepository: Repository<ClientError>,
     @InjectRepository(ServerError)
@@ -302,6 +305,57 @@ export class DashboardQueryService {
     // 최근 6시간 동시접속 Max/Avg 계산
     const concurrentLastHourStats = await this.calculateLastHourConcurrent(oneHourAgo, now);
 
+    // 원서 제출 이벤트 통계 (최근 6시간 및 전체)
+    const submissionSuccessLastHour = await this.submissionEventRepository.count({
+      where: {
+        eventType: SubmissionEventType.SUCCESS,
+        createdAt: MoreThan(oneHourAgo),
+      },
+    });
+    const submissionCancelledLastHour = await this.submissionEventRepository.count({
+      where: {
+        eventType: SubmissionEventType.CANCELLED,
+        createdAt: MoreThan(oneHourAgo),
+      },
+    });
+    const submissionSuccessTotal = await this.submissionEventRepository.count({
+      where: { eventType: SubmissionEventType.SUCCESS },
+    });
+    const submissionCancelledTotal = await this.submissionEventRepository.count({
+      where: { eventType: SubmissionEventType.CANCELLED },
+    });
+
+    // 서버 타임아웃 집계
+    // 타임아웃 조건: HTTP 408/504 또는 errorCategory/errorCode/message에 'timeout' 포함
+    const serverTimeoutLastHour = await this.serverErrorRepository
+      .createQueryBuilder('error')
+      .where('error.created_at > :oneHourAgo', { oneHourAgo })
+      .andWhere(
+        '(error.http_status IN (:...timeoutStatuses) OR ' +
+        'LOWER(error.error_category) LIKE :timeoutPattern OR ' +
+        'LOWER(error.error_code) LIKE :timeoutPattern OR ' +
+        'LOWER(error.message) LIKE :timeoutPattern)',
+        {
+          timeoutStatuses: [408, 504],
+          timeoutPattern: '%timeout%',
+        }
+      )
+      .getCount();
+
+    const serverTimeoutTotal = await this.serverErrorRepository
+      .createQueryBuilder('error')
+      .where(
+        '(error.http_status IN (:...timeoutStatuses) OR ' +
+        'LOWER(error.error_category) LIKE :timeoutPattern OR ' +
+        'LOWER(error.error_code) LIKE :timeoutPattern OR ' +
+        'LOWER(error.message) LIKE :timeoutPattern)',
+        {
+          timeoutStatuses: [408, 504],
+          timeoutPattern: '%timeout%',
+        }
+      )
+      .getCount();
+
     return {
       realtime: {
         concurrent: {
@@ -387,8 +441,8 @@ export class DashboardQueryService {
         data: timelineData,
       },
       serverTimeout: {
-        lastHour: 0,
-        total: 0,
+        lastHour: serverTimeoutLastHour,
+        total: serverTimeoutTotal,
       },
       visitorStats: {
         totalSessions,
@@ -398,6 +452,16 @@ export class DashboardQueryService {
         avgStayTime,
       },
       concurrentLastHour: concurrentLastHourStats,
+      submissionEvents: {
+        lastHour: {
+          success: submissionSuccessLastHour,
+          cancelled: submissionCancelledLastHour,
+        },
+        total: {
+          success: submissionSuccessTotal,
+          cancelled: submissionCancelledTotal,
+        },
+      },
     };
   }
 

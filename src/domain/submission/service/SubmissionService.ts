@@ -9,6 +9,7 @@ import {
   SubmissionCancellation,
   CancelStatus,
 } from '../entity/SubmissionCancellation.entity';
+import { SubmissionEvent } from '../entity/SubmissionEvent.entity';
 import { StartSubmissionRequest } from '../presentation/dto/request/StartSubmissionRequest';
 import { StartSubmissionResponse } from '../presentation/dto/response/StartSubmissionResponse';
 import { CancelSubmissionResponse } from '../presentation/dto/response/CancelSubmissionResponse';
@@ -28,6 +29,8 @@ export class SubmissionService {
     private readonly submissionRepository: Repository<SubmissionSession>,
     @InjectRepository(SubmissionCancellation)
     private readonly cancellationRepository: Repository<SubmissionCancellation>,
+    @InjectRepository(SubmissionEvent)
+    private readonly eventRepository: Repository<SubmissionEvent>,
   ) {}
 
   /**
@@ -90,6 +93,12 @@ export class SubmissionService {
 
     submission.complete();
     await this.submissionRepository.save(submission);
+
+    // 제출 성공 이벤트 기록
+    if (submission.sessionId) {
+      const event = SubmissionEvent.createSuccess(submission.sessionId, submission.id);
+      await this.eventRepository.save(event);
+    }
   }
 
   /**
@@ -158,6 +167,10 @@ export class SubmissionService {
       null,
     );
     await this.cancellationRepository.save(cancellation);
+
+    // 제출 취소 이벤트 기록
+    const event = SubmissionEvent.createCancelled(sessionId, submissionId, reason);
+    await this.eventRepository.save(event);
 
     return {
       status: 'success',

@@ -5,6 +5,7 @@ import { HealthCheck } from '../monitoring/entity/HealthCheck.entity';
 import { ApiLog } from '../monitoring/entity/ApiLog.entity';
 import { SubmissionSession } from '../submission/entity/SubmissionSession.entity';
 import { SubmissionCancellation } from '../submission/entity/SubmissionCancellation.entity';
+import { SubmissionEvent } from '../submission/entity/SubmissionEvent.entity';
 import { ClientError } from '../error/entity/ClientError.entity';
 import { ServerError } from '../error/entity/ServerError.entity';
 import { CriticalError } from '../error/entity/CriticalError.entity';
@@ -21,6 +22,7 @@ import { DashboardController } from './presentation/DashboardController';
       ApiLog,
       SubmissionSession,
       SubmissionCancellation,
+      SubmissionEvent,
       ClientError,
       ServerError,
       CriticalError,
