@@ -13,7 +13,8 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AdminApiBearerAuth } from '../../../global/decorators/AdminApiBearerAuth';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
-import { ErrorService } from '../service/ErrorService';
+import { ErrorCommandService } from '../service/ErrorCommandService';
+import { ErrorQueryService } from '../service/ErrorQueryService';
 import { ReportClientErrorRequest } from './dto/request/ReportClientErrorRequest';
 import { ReportServerErrorRequest } from './dto/request/ReportServerErrorRequest';
 import { ReportCriticalErrorRequest } from './dto/request/ReportCriticalErrorRequest';
@@ -25,7 +26,10 @@ import { GetErrorsResponse } from './dto/response/GetErrorsResponse';
 @Controller('v1/error')
 @UseInterceptors(ResponseInterceptor)
 export class ErrorController {
-  constructor(private readonly errorService: ErrorService) {}
+  constructor(
+    private readonly errorCommandService: ErrorCommandService,
+    private readonly errorQueryService: ErrorQueryService,
+  ) {}
 
   @Post('client')
   @HttpCode(200)
@@ -34,7 +38,7 @@ export class ErrorController {
   async reportClientError(
     @Body() request: ReportClientErrorRequest,
   ): Promise<ErrorReportResponse> {
-    return this.errorService.reportClientError(request);
+    return this.errorCommandService.reportClientError(request);
   }
 
   @Post('server')
@@ -44,7 +48,7 @@ export class ErrorController {
   async reportServerError(
     @Body() request: ReportServerErrorRequest,
   ): Promise<ErrorReportResponse> {
-    return this.errorService.reportServerError(request);
+    return this.errorCommandService.reportServerError(request);
   }
 
   @Post('critical')
@@ -54,7 +58,7 @@ export class ErrorController {
   async reportCriticalError(
     @Body() request: ReportCriticalErrorRequest,
   ): Promise<ErrorReportResponse> {
-    return this.errorService.reportCriticalError(request);
+    return this.errorCommandService.reportCriticalError(request);
   }
 
   @Get('admin/list')
@@ -64,7 +68,7 @@ export class ErrorController {
   })
   @ApiResponse({ status: 200, type: GetErrorsResponse })
   async getErrors(@Query() request: GetErrorsRequest): Promise<GetErrorsResponse> {
-    return this.errorService.getErrors(request);
+    return this.errorQueryService.getErrors(request);
   }
 
   @Patch('client/:id/resolve')
@@ -72,7 +76,7 @@ export class ErrorController {
   @ApiOperation({ summary: '클라이언트 에러 해결 처리' })
   @ApiResponse({ status: 200, description: '클라이언트 에러 해결 완료' })
   async resolveClientError(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.errorService.resolveClientError(id);
+    return this.errorCommandService.resolveClientError(id);
   }
 
   @Patch('server/:id/resolve')
@@ -80,6 +84,6 @@ export class ErrorController {
   @ApiOperation({ summary: '서버 에러 해결 처리' })
   @ApiResponse({ status: 200, description: '서버 에러 해결 완료' })
   async resolveServerError(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.errorService.resolveServerError(id);
+    return this.errorCommandService.resolveServerError(id);
   }
 }
