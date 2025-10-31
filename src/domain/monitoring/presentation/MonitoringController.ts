@@ -1,7 +1,8 @@
 import { Controller, Post, Get, Body, Query, UseInterceptors, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
-import { MonitoringService } from '../service/MonitoringService';
+import { MonitoringCommandService } from '../service/MonitoringCommandService';
+import { MonitoringQueryService } from '../service/MonitoringQueryService';
 import { HealthCheckRequest } from './dto/request/HealthCheckRequest';
 import { ApiLogRequest } from './dto/request/ApiLogRequest';
 import { GetApiLogsRequest } from './dto/request/GetApiLogsRequest';
@@ -13,14 +14,17 @@ import { GetHealthChecksResponse } from './dto/response/GetHealthChecksResponse'
 @Controller('v1')
 @UseInterceptors(ResponseInterceptor)
 export class MonitoringController {
-  constructor(private readonly monitoringService: MonitoringService) {}
+  constructor(
+    private readonly monitoringCommandService: MonitoringCommandService,
+    private readonly monitoringQueryService: MonitoringQueryService,
+  ) {}
 
   @Post('healthcheck')
   @HttpCode(204)
   @ApiOperation({ summary: 'Health check 기록' })
   @ApiResponse({ status: 204, description: 'No Content' })
   async healthCheck(@Body() request: HealthCheckRequest): Promise<void> {
-    await this.monitoringService.recordHealthCheck(request);
+    await this.monitoringCommandService.recordHealthCheck(request);
   }
 
   @Get('healthcheck/list')
@@ -30,7 +34,7 @@ export class MonitoringController {
   })
   @ApiResponse({ status: 200, type: GetHealthChecksResponse })
   async getHealthChecks(@Query() request: GetHealthChecksRequest): Promise<GetHealthChecksResponse> {
-    return this.monitoringService.getHealthChecks(request);
+    return this.monitoringQueryService.getHealthChecks(request);
   }
 
   @Post('logs/api')
@@ -38,7 +42,7 @@ export class MonitoringController {
   @ApiOperation({ summary: 'API 로그 기록' })
   @ApiResponse({ status: 204, description: 'No Content' })
   async logApi(@Body() request: ApiLogRequest): Promise<void> {
-    await this.monitoringService.recordApiLog(request);
+    await this.monitoringCommandService.recordApiLog(request);
   }
 
   @Get('logs/api/list')
@@ -48,6 +52,6 @@ export class MonitoringController {
   })
   @ApiResponse({ status: 200, type: GetApiLogsResponse })
   async getApiLogs(@Query() request: GetApiLogsRequest): Promise<GetApiLogsResponse> {
-    return this.monitoringService.getApiLogs(request);
+    return this.monitoringQueryService.getApiLogs(request);
   }
 }
