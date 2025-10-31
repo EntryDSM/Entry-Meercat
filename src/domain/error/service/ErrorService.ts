@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, FindOperator, FindOptionsWhere } from 'typeorm';
 import { ClientError } from '../entity/ClientError.entity';
 import { ServerError } from '../entity/ServerError.entity';
 import { CriticalError } from '../entity/CriticalError.entity';
@@ -168,7 +168,7 @@ export class ErrorService {
     });
 
     if (!error) {
-      throw new Error('Critical error not found');
+      throw new NotFoundException('Critical error not found');
     }
 
     error.resolve();
@@ -256,7 +256,7 @@ export class ErrorService {
   private async getClientErrors(
     page: number,
     limit: number,
-    dateFilter: any,
+    dateFilter: FindOperator<Date> | undefined,
   ): Promise<[ErrorItemResponse[], number]> {
     const [clientErrors, count] = await this.clientErrorRepository.findAndCount({
       where: { createdAt: dateFilter },
@@ -285,7 +285,7 @@ export class ErrorService {
   private async getServerErrors(
     page: number,
     limit: number,
-    dateFilter: any,
+    dateFilter: FindOperator<Date> | undefined,
   ): Promise<[ErrorItemResponse[], number]> {
     const [serverErrors, count] = await this.serverErrorRepository.findAndCount({
       where: { createdAt: dateFilter },
@@ -317,10 +317,10 @@ export class ErrorService {
   private async getCriticalErrors(
     page: number,
     limit: number,
-    dateFilter: any,
+    dateFilter: FindOperator<Date> | undefined,
     resolutionStatus?: ErrorResolutionStatus,
   ): Promise<[ErrorItemResponse[], number]> {
-    const where: any = { createdAt: dateFilter };
+    const where: FindOptionsWhere<CriticalError> = { createdAt: dateFilter };
 
     // 해결 상태 필터링
     if (resolutionStatus === ErrorResolutionStatus.RESOLVED) {
@@ -355,7 +355,7 @@ export class ErrorService {
   /**
    * 날짜 필터 생성
    */
-  private buildDateFilter(startDate?: string, endDate?: string): any {
+  private buildDateFilter(startDate?: string, endDate?: string): FindOperator<Date> | undefined {
     if (startDate && endDate) {
       return Between(new Date(startDate), new Date(endDate));
     } else if (startDate) {
