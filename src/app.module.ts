@@ -31,14 +31,23 @@ import { NetworkTest } from './domain/network/entity/NetworkTest.entity';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: (config: Record<string, unknown>) => {
+        const required = ['JWT_SECRET', 'DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_DATABASE'];
+        for (const key of required) {
+          if (!config[key]) {
+            throw new Error(`Missing required environment variable: ${key}`);
+          }
+        }
+        return config;
+      },
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: process.env.DB_HOST || 'localhost',
+      host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306'),
-      username: process.env.DB_USERNAME || 'root',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_DATABASE || 'entrydsm_apm',
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
       entities: [
         Session,
         Admin,
@@ -53,7 +62,7 @@ import { NetworkTest } from './domain/network/entity/NetworkTest.entity';
         PdfOperation,
         NetworkTest,
       ],
-      synchronize: process.env.DB_SYNCHRONIZE === 'true',
+      synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
     }),
     TypeOrmModule.forFeature([Session]),
