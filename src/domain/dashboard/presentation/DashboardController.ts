@@ -1,10 +1,12 @@
 import { Controller, Get, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
+import { AdminApiBearerAuth } from '../../../global/decorators/AdminApiBearerAuth';
 import { DashboardQueryService } from '../service/DashboardQueryService';
 import { DashboardRealtimeResponse } from './dto/response/DashboardRealtimeResponse';
 
 @ApiTags('dashboard')
+@AdminApiBearerAuth()
 @Controller('v1/dashboard')
 @UseInterceptors(ResponseInterceptor)
 export class DashboardController {
