@@ -1,13 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CqrsModule } from '@nestjs/cqrs';
 import { Session } from './entity/Session.entity';
-import { SessionService } from './service/SessionService';
+import { SessionCommandService } from './service/SessionCommandService';
 import { SessionController } from './presentation/SessionController';
+import { StartSessionHandler } from './command/handler/StartSessionHandler';
+import { UpdateStatusHandler } from './command/handler/UpdateStatusHandler';
+import { EndSessionHandler } from './command/handler/EndSessionHandler';
+
+const CommandHandlers = [StartSessionHandler, UpdateStatusHandler, EndSessionHandler];
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Session])],
+  imports: [CqrsModule, TypeOrmModule.forFeature([Session])],
   controllers: [SessionController],
-  providers: [SessionService],
-  exports: [SessionService],
+  providers: [SessionCommandService, ...CommandHandlers],
 })
 export class SessionModule {}

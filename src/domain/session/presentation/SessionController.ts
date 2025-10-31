@@ -9,7 +9,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
-import { SessionService } from '../service/SessionService';
+import { SessionCommandService } from '../service/SessionCommandService';
 import { StartSessionRequest } from './dto/request/StartSessionRequest';
 import { StartSessionResponse } from './dto/response/StartSessionResponse';
 import { UpdateStatusRequest } from './dto/request/UpdateStatusRequest';
@@ -19,7 +19,7 @@ import { EndSessionRequest } from './dto/request/EndSessionRequest';
 @Controller('v1/session')
 @UseInterceptors(ResponseInterceptor)
 export class SessionController {
-  constructor(private readonly sessionService: SessionService) {}
+  constructor(private readonly sessionCommandService: SessionCommandService) {}
 
   @Post('start')
   @ApiOperation({ summary: '세션 시작' })
@@ -29,7 +29,7 @@ export class SessionController {
     @Req() req: Request,
   ): Promise<StartSessionResponse> {
     const ipAddress = req.ip || req.socket.remoteAddress || '';
-    return this.sessionService.startSession(request, ipAddress);
+    return this.sessionCommandService.startSession(request, ipAddress);
   }
 
   @Post('status')
@@ -37,7 +37,7 @@ export class SessionController {
   @ApiOperation({ summary: '사용자 상태 변경' })
   @ApiResponse({ status: 204, description: 'No Content' })
   async updateStatus(@Body() request: UpdateStatusRequest): Promise<void> {
-    await this.sessionService.updateStatus(request.sessionId, request.status);
+    await this.sessionCommandService.updateStatus(request.sessionId, request.status);
   }
 
   @Post('end')
@@ -45,6 +45,6 @@ export class SessionController {
   @ApiOperation({ summary: '세션 종료' })
   @ApiResponse({ status: 204, description: 'No Content' })
   async endSession(@Body() request: EndSessionRequest): Promise<void> {
-    await this.sessionService.endSession(request.sessionId, request.reason);
+    await this.sessionCommandService.endSession(request.sessionId, request.reason);
   }
 }
