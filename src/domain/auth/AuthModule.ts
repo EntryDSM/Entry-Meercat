@@ -12,8 +12,8 @@ import { JwtStrategy } from '../../global/strategies/JwtStrategy';
     TypeOrmModule.forFeature([Admin]),
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secret',
-      signOptions: { expiresIn: '30d' },
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}` },
     }),
   ],
   controllers: [AuthController],
