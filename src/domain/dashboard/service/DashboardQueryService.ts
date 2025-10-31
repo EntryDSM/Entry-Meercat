@@ -15,12 +15,10 @@ import { NetworkTest, NetworkQualityRating } from '../../network/entity/NetworkT
 import { DashboardRealtimeResponse } from '../presentation/dto/response/DashboardRealtimeResponse';
 
 /**
- * 대시보드 쿼리 서비스 (CQRS Query)
- *
- * @description
- * - 읽기 전용 쿼리 서비스
- * - 모든 도메인 데이터 집계
- * - 실시간 대시보드 데이터 제공
+ * 대시보드 쿼리 서비스
+ * - 읽기/쓰기 책임 분리 구조의 읽기 전용 서비스
+ * - 10개 이상의 도메인 레포지토리에서 데이터를 집계하여 대시보드 통계 제공
+ * - Command(쓰기)는 각 도메인 서비스(SessionService, ErrorService 등)가 담당
  */
 @Injectable()
 export class DashboardQueryService {
