@@ -13,6 +13,8 @@ import { RecordSubmissionCancelRequest } from './dto/request/RecordSubmissionCan
 import { RecordCancelSuccessRequest } from './dto/request/RecordCancelSuccessRequest';
 import { RecordCancelCancelRequest } from './dto/request/RecordCancelCancelRequest';
 
+// 외부 클라이언트 전용 - 인증 불필요
+// 입학처 시스템이 이벤트를 전송하는 엔드포인트로 JWT 인증 가드를 적용하지 않습니다.
 @ApiTags('submission')
 @Controller('v1/submission')
 @UseInterceptors(ResponseInterceptor)
