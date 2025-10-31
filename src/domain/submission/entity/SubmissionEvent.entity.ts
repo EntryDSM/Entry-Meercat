@@ -31,7 +31,7 @@ export class SubmissionEvent {
   createdAt: Date;
 
   @Column({ name: 'metadata', type: 'json', nullable: true })
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 
   static createSubmissionSuccess(sessionId: string, submissionId: number): SubmissionEvent {
     const event = new SubmissionEvent();
