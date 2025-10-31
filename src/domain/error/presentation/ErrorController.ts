@@ -2,12 +2,16 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Query,
+  Param,
+  ParseIntPipe,
   UseInterceptors,
   HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { AdminApiBearerAuth } from '../../../global/decorators/AdminApiBearerAuth';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
 import { ErrorService } from '../service/ErrorService';
 import { ReportClientErrorRequest } from './dto/request/ReportClientErrorRequest';
@@ -61,5 +65,21 @@ export class ErrorController {
   @ApiResponse({ status: 200, type: GetErrorsResponse })
   async getErrors(@Query() request: GetErrorsRequest): Promise<GetErrorsResponse> {
     return this.errorService.getErrors(request);
+  }
+
+  @Patch('client/:id/resolve')
+  @AdminApiBearerAuth()
+  @ApiOperation({ summary: '클라이언트 에러 해결 처리' })
+  @ApiResponse({ status: 200, description: '클라이언트 에러 해결 완료' })
+  async resolveClientError(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.errorService.resolveClientError(id);
+  }
+
+  @Patch('server/:id/resolve')
+  @AdminApiBearerAuth()
+  @ApiOperation({ summary: '서버 에러 해결 처리' })
+  @ApiResponse({ status: 200, description: '서버 에러 해결 완료' })
+  async resolveServerError(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.errorService.resolveServerError(id);
   }
 }
