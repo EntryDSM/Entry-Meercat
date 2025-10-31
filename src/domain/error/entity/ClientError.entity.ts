@@ -33,6 +33,12 @@ export class ClientError {
   @Column({ name: 'user_action', type: 'varchar', length: 100, nullable: true })
   userAction: string | null;
 
+  @Column({ name: 'resolved', type: 'boolean', default: false })
+  resolved: boolean;
+
+  @Column({ name: 'resolved_at', type: 'timestamp', nullable: true })
+  resolvedAt: Date | null;
+
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -57,6 +63,13 @@ export class ClientError {
     error.pageUrl = pageUrl;
     error.componentName = componentName;
     error.userAction = userAction;
+    error.resolved = false;
+    error.resolvedAt = null;
     return error;
+  }
+
+  resolve(): void {
+    this.resolved = true;
+    this.resolvedAt = new Date();
   }
 }

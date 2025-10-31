@@ -39,6 +39,12 @@ export class ServerError {
   @Column({ name: 'response_time', type: 'int', nullable: true })
   responseTime: number | null;
 
+  @Column({ name: 'resolved', type: 'boolean', default: false })
+  resolved: boolean;
+
+  @Column({ name: 'resolved_at', type: 'timestamp', nullable: true })
+  resolvedAt: Date | null;
+
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -67,6 +73,13 @@ export class ServerError {
     error.stackTrace = stackTrace;
     error.requestPayload = requestPayload;
     error.responseTime = responseTime;
+    error.resolved = false;
+    error.resolvedAt = null;
     return error;
+  }
+
+  resolve(): void {
+    this.resolved = true;
+    this.resolvedAt = new Date();
   }
 }
