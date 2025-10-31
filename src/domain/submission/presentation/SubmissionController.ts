@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ResponseInterceptor } from '../../../global/interceptors/ResponseInterceptor';
-import { SubmissionService } from '../service/SubmissionService';
+import { SubmissionCommandService } from '../service/SubmissionCommandService';
 import { RecordSubmissionSuccessRequest } from './dto/request/RecordSubmissionSuccessRequest';
 import { RecordSubmissionCancelRequest } from './dto/request/RecordSubmissionCancelRequest';
 import { RecordCancelSuccessRequest } from './dto/request/RecordCancelSuccessRequest';
@@ -19,7 +19,7 @@ import { RecordCancelCancelRequest } from './dto/request/RecordCancelCancelReque
 @Controller('v1/submission')
 @UseInterceptors(ResponseInterceptor)
 export class SubmissionController {
-  constructor(private readonly submissionService: SubmissionService) {}
+  constructor(private readonly submissionCommandService: SubmissionCommandService) {}
 
   @Post('submission/success')
   @HttpCode(204)
@@ -28,7 +28,7 @@ export class SubmissionController {
   async recordSubmissionSuccess(
     @Body() request: RecordSubmissionSuccessRequest,
   ): Promise<void> {
-    await this.submissionService.recordSubmissionSuccess(
+    await this.submissionCommandService.recordSubmissionSuccess(
       request.sessionId,
       request.submissionId,
     );
@@ -41,7 +41,7 @@ export class SubmissionController {
   async recordSubmissionCancel(
     @Body() request: RecordSubmissionCancelRequest,
   ): Promise<void> {
-    await this.submissionService.recordSubmissionCancel(
+    await this.submissionCommandService.recordSubmissionCancel(
       request.sessionId,
       request.submissionId,
       request.reason,
@@ -55,7 +55,7 @@ export class SubmissionController {
   async recordCancelSuccess(
     @Body() request: RecordCancelSuccessRequest,
   ): Promise<void> {
-    await this.submissionService.recordCancelSuccess(
+    await this.submissionCommandService.recordCancelSuccess(
       request.sessionId,
       request.submissionId,
     );
@@ -68,7 +68,7 @@ export class SubmissionController {
   async recordCancelCancel(
     @Body() request: RecordCancelCancelRequest,
   ): Promise<void> {
-    await this.submissionService.recordCancelCancel(
+    await this.submissionCommandService.recordCancelCancel(
       request.sessionId,
       request.submissionId,
       request.reason,
