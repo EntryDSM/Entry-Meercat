@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { Admin } from './entity/Admin.entity';
 import { AuthService } from './service/AuthService';
 import { AuthController } from './presentation/AuthController';
@@ -11,9 +12,12 @@ import { JwtStrategy } from '../../global/strategies/JwtStrategy';
   imports: [
     TypeOrmModule.forFeature([Admin]),
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}` },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: (config.get<string>('JWT_EXPIRES_IN') || '1d') as `${number}${'s' | 'm' | 'h' | 'd' | 'w' | 'y'}` },
+      }),
     }),
   ],
   controllers: [AuthController],
