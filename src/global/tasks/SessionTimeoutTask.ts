@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, IsNull } from 'typeorm';
-import { Session } from '../../domain/session/entity/Session.entity';
+import { Session, SessionEndReason } from '../../domain/session/entity/Session.entity';
 
 /**
  * 세션 타임아웃 처리 스케줄러
@@ -30,7 +30,7 @@ export class SessionTimeoutTask {
         .update(Session)
         .set({
           endedAt: () => 'NOW()',
-          endReason: 'timeout',
+          endReason: SessionEndReason.TIMEOUT,
         })
         .where('ended_at IS NULL')
         .andWhere('last_heartbeat_at < :twoMinutesAgo', { twoMinutesAgo })
