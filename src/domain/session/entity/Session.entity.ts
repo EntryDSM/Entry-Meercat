@@ -12,6 +12,12 @@ export enum UserStatus {
   AUTHENTICATED = 'authenticated',
 }
 
+export enum SessionEndReason {
+  TIMEOUT = 'timeout',
+  NORMAL = 'normal',
+  ERROR = 'error',
+}
+
 @Entity('tbl_sessions')
 export class Session {
   @PrimaryColumn({ name: 'session_id', length: 36 })
@@ -64,7 +70,7 @@ export class Session {
   endedAt: Date | null;
 
   @Column({ name: 'end_reason', type: 'varchar', length: 20, nullable: true })
-  endReason: string | null;
+  endReason: SessionEndReason | null;
 
   @Column({ name: 'initial_latency', type: 'int', nullable: true })
   initialLatency: number | null;
@@ -127,7 +133,7 @@ export class Session {
     this.userStatus = status;
   }
 
-  end(reason: string): void {
+  end(reason: SessionEndReason): void {
     this.endedAt = new Date();
     this.endReason = reason;
   }
