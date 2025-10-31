@@ -56,17 +56,255 @@ export class DashboardQueryService {
    */
   async getRealtimeData(): Promise<DashboardRealtimeResponse> {
     const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const activeSessions = await this.sessionRepository
-      .createQueryBuilder('session')
-      .where('session.ended_at IS NULL')
-      .andWhere('session.last_heartbeat_at > :twoMinutesAgo', {
-        twoMinutesAgo: new Date(now.getTime() - 2 * 60 * 1000),
-      })
-      .getMany();
+    // 모든 독립 쿼리를 병렬로 실행
+    const [
+      activeSessions,
+      activeSubmissions,
+      apiLogsLastHour,
+      sessionsLastHour,
+      totalSubmissions,
+      inProgress,
+      success,
+      failed,
+      abandoned,
+      successCancellations,
+      failedCancellations,
+      totalApiRequests,
+      apiRequestsLastHour,
+      apiSuccessCount,
+      totalSessions,
+      revisitSessions,
+      reuseSumResult,
+      sessionsForStayTime,
+      clientErrorsLastHour,
+      serverErrorsLastHour,
+      criticalErrorsLastHour,
+      recentServerErrors,
+      recentClientErrors,
+      pdfDownloadSuccess,
+      pdfDownloadFailed,
+      pdfPreviewSuccess,
+      pdfPreviewFailed,
+      networkGood,
+      networkPoor,
+      completedSubmissions,
+      timelineData,
+      concurrentLastHourStats,
+      submissionSuccessLastHour,
+      submissionCancelledLastHour,
+      submissionSuccessTotal,
+      submissionCancelledTotal,
+      serverTimeoutLastHour,
+      serverTimeoutTotal,
+    ] = await Promise.all([
+      // activeSessions
+      this.sessionRepository
+        .createQueryBuilder('session')
+        .where('session.ended_at IS NULL')
+        .andWhere('session.last_heartbeat_at > :twoMinutesAgo', {
+          twoMinutesAgo: new Date(now.getTime() - 2 * 60 * 1000),
+        })
+        .getMany(),
+      // activeSubmissions
+      this.submissionRepository.count({
+        where: { submissionStatus: SubmissionStatus.IN_PROGRESS },
+      }),
+      // apiLogsLastHour
+      this.apiLogRepository.find({
+        where: { createdAt: MoreThan(sixHoursAgo) },
+      }),
+      // sessionsLastHour (DOM 로드 시간)
+      this.sessionRepository.find({
+        where: {
+          startedAt: MoreThan(sixHoursAgo),
+          domLoadTime: Not(IsNull()),
+        },
+      }),
+      // totalSubmissions
+      this.submissionRepository.count(),
+      // inProgress
+      this.submissionRepository.count({
+        where: { submissionStatus: SubmissionStatus.IN_PROGRESS },
+      }),
+      // success
+      this.submissionRepository.count({
+        where: { submissionStatus: SubmissionStatus.SUCCESS },
+      }),
+      // failed
+      this.submissionRepository.count({
+        where: { submissionStatus: SubmissionStatus.FAILED },
+      }),
+      // abandoned
+      this.submissionRepository.count({
+        where: { submissionStatus: SubmissionStatus.ABANDONED },
+      }),
+      // successCancellations
+      this.cancellationRepository.count({
+        where: { cancelStatus: CancelStatus.SUCCESS },
+      }),
+      // failedCancellations
+      this.cancellationRepository.count({
+        where: { cancelStatus: CancelStatus.FAILED },
+      }),
+      // totalApiRequests
+      this.apiLogRepository.count(),
+      // apiRequestsLastHour
+      this.apiLogRepository.count({
+        where: { createdAt: MoreThan(sixHoursAgo) },
+      }),
+      // apiSuccessCount
+      this.apiLogRepository.count({
+        where: {
+          createdAt: MoreThan(sixHoursAgo),
+          statusCode: Between(200, 299),
+        },
+      }),
+      // totalSessions
+      this.sessionRepository.count(),
+      // revisitSessions
+      this.sessionRepository.count({
+        where: { reuseCount: MoreThan(0) },
+      }),
+      // reuseSumResult (SUM 쿼리)
+      this.sessionRepository
+        .createQueryBuilder('session')
+        .select('SUM(session.reuseCount)', 'sum')
+        .getRawOne(),
+      // sessionsForStayTime
+      this.sessionRepository.find({
+        where: { startedAt: MoreThan(sixHoursAgo) },
+        select: ['startedAt', 'endedAt', 'lastHeartbeatAt'],
+      }),
+      // clientErrorsLastHour
+      this.clientErrorRepository.count({
+        where: { createdAt: MoreThan(sixHoursAgo) },
+      }),
+      // serverErrorsLastHour
+      this.serverErrorRepository.count({
+        where: { createdAt: MoreThan(sixHoursAgo) },
+      }),
+      // criticalErrorsLastHour
+      this.criticalErrorRepository.count({
+        where: { createdAt: MoreThan(sixHoursAgo) },
+      }),
+      // recentServerErrors
+      this.serverErrorRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }),
+      // recentClientErrors
+      this.clientErrorRepository.find({
+        order: { createdAt: 'DESC' },
+        take: 10,
+      }),
+      // pdfDownloadSuccess
+      this.pdfOperationRepository.count({
+        where: {
+          operationType: PdfOperationType.DOWNLOAD,
+          operationStatus: PdfOperationStatus.SUCCESS,
+        },
+      }),
+      // pdfDownloadFailed
+      this.pdfOperationRepository.count({
+        where: {
+          operationType: PdfOperationType.DOWNLOAD,
+          operationStatus: PdfOperationStatus.FAILED,
+        },
+      }),
+      // pdfPreviewSuccess
+      this.pdfOperationRepository.count({
+        where: {
+          operationType: PdfOperationType.PREVIEW,
+          operationStatus: PdfOperationStatus.SUCCESS,
+        },
+      }),
+      // pdfPreviewFailed
+      this.pdfOperationRepository.count({
+        where: {
+          operationType: PdfOperationType.PREVIEW,
+          operationStatus: PdfOperationStatus.FAILED,
+        },
+      }),
+      // networkGood
+      this.networkTestRepository.count({
+        where: {
+          createdAt: MoreThan(sixHoursAgo),
+          downloadSpeed: MoreThanOrEqual(1),
+        },
+      }),
+      // networkPoor
+      this.networkTestRepository.count({
+        where: {
+          createdAt: MoreThan(sixHoursAgo),
+          downloadSpeed: LessThan(1),
+        },
+      }),
+      // completedSubmissions
+      this.submissionRepository.find({
+        where: { submissionStatus: SubmissionStatus.SUCCESS },
+        select: ['startedAt', 'completedAt'],
+      }),
+      // timelineData (24시간 타임라인)
+      this.build24HourTimeline(twentyFourHoursAgo, now),
+      // concurrentLastHourStats (6시간 동시접속 Max/Avg)
+      this.calculateLastHourConcurrent(sixHoursAgo, now),
+      // submissionSuccessLastHour
+      this.submissionEventRepository.count({
+        where: {
+          eventType: SubmissionEventType.SUBMISSION_SUCCESS,
+          createdAt: MoreThan(sixHoursAgo),
+        },
+      }),
+      // submissionCancelledLastHour
+      this.submissionEventRepository.count({
+        where: {
+          eventType: SubmissionEventType.SUBMISSION_CANCEL,
+          createdAt: MoreThan(sixHoursAgo),
+        },
+      }),
+      // submissionSuccessTotal
+      this.submissionEventRepository.count({
+        where: { eventType: SubmissionEventType.SUBMISSION_SUCCESS },
+      }),
+      // submissionCancelledTotal
+      this.submissionEventRepository.count({
+        where: { eventType: SubmissionEventType.SUBMISSION_CANCEL },
+      }),
+      // serverTimeoutLastHour
+      this.serverErrorRepository
+        .createQueryBuilder('error')
+        .where('error.created_at > :sixHoursAgo', { sixHoursAgo })
+        .andWhere(
+          '(error.http_status IN (:...timeoutStatuses) OR ' +
+          'LOWER(error.error_category) LIKE :timeoutPattern OR ' +
+          'LOWER(error.error_code) LIKE :timeoutPattern OR ' +
+          'LOWER(error.message) LIKE :timeoutPattern)',
+          {
+            timeoutStatuses: [408, 504],
+            timeoutPattern: '%timeout%',
+          }
+        )
+        .getCount(),
+      // serverTimeoutTotal
+      this.serverErrorRepository
+        .createQueryBuilder('error')
+        .where(
+          '(error.http_status IN (:...timeoutStatuses) OR ' +
+          'LOWER(error.error_category) LIKE :timeoutPattern OR ' +
+          'LOWER(error.error_code) LIKE :timeoutPattern OR ' +
+          'LOWER(error.message) LIKE :timeoutPattern)',
+          {
+            timeoutStatuses: [408, 504],
+            timeoutPattern: '%timeout%',
+          }
+        )
+        .getCount(),
+    ]);
 
+    // 병렬 쿼리 결과를 기반으로 파생 값 계산
     const totalConcurrent = activeSessions.length;
 
     const byStatus = {
@@ -79,14 +317,6 @@ export class DashboardQueryService {
       AUTH: activeSessions.filter((s) => s.currentPageType === 'AUTH').length,
       ADMISSION: activeSessions.filter((s) => s.currentPageType === 'ADMISSION').length,
     };
-
-    const activeSubmissions = await this.submissionRepository.count({
-      where: { submissionStatus: SubmissionStatus.IN_PROGRESS },
-    });
-
-    const apiLogsLastHour = await this.apiLogRepository.find({
-      where: { createdAt: MoreThan(oneHourAgo) },
-    });
 
     const avgResponseTime =
       apiLogsLastHour.length > 0
@@ -101,20 +331,6 @@ export class DashboardQueryService {
         ? Math.max(...apiLogsLastHour.map((log) => log.responseTime || 0))
         : 0;
 
-    // Session 테이블에서 DOM 로드 시간 조회 (최근 6시간 내 시작된 세션)
-    const sessionsLastHour = await this.sessionRepository.find({
-      where: {
-        startedAt: MoreThan(oneHourAgo),
-        domLoadTime: Not(IsNull()),
-      },
-    });
-
-    console.log('[DEBUG] sessionsLastHour.length:', sessionsLastHour.length);
-    if (sessionsLastHour.length > 0) {
-      console.log('[DEBUG] 첫 번째 세션 domLoadTime:', sessionsLastHour[0].domLoadTime);
-      console.log('[DEBUG] 모든 domLoadTime:', sessionsLastHour.map(s => s.domLoadTime));
-    }
-
     const avgDomLoadTime =
       sessionsLastHour.length > 0
         ? Math.round(
@@ -123,66 +339,19 @@ export class DashboardQueryService {
           )
         : 0;
 
-    console.log('[DEBUG] avgDomLoadTime 계산 결과:', avgDomLoadTime);
-
-    const totalSubmissions = await this.submissionRepository.count();
-    const inProgress = await this.submissionRepository.count({
-      where: { submissionStatus: SubmissionStatus.IN_PROGRESS },
-    });
-    const success = await this.submissionRepository.count({
-      where: { submissionStatus: SubmissionStatus.SUCCESS },
-    });
-    const failed = await this.submissionRepository.count({
-      where: { submissionStatus: SubmissionStatus.FAILED },
-    });
-    const abandoned = await this.submissionRepository.count({
-      where: { submissionStatus: SubmissionStatus.ABANDONED },
-    });
-
-    const successCancellations = await this.cancellationRepository.count({
-      where: { cancelStatus: CancelStatus.SUCCESS },
-    });
-    const failedCancellations = await this.cancellationRepository.count({
-      where: { cancelStatus: CancelStatus.FAILED },
-    });
-
-    const totalApiRequests = await this.apiLogRepository.count();
-    const apiRequestsLastHour = await this.apiLogRepository.count({
-      where: { createdAt: MoreThan(oneHourAgo) },
-    });
-
-    // API 성공/실패 통계
-    const apiSuccessCount = await this.apiLogRepository.count({
-      where: {
-        createdAt: MoreThan(oneHourAgo),
-        statusCode: Between(200, 299),
-      },
-    });
     const apiErrorCount = apiRequestsLastHour - apiSuccessCount;
 
     // 재방문율 계산
-    const totalSessions = await this.sessionRepository.count();
-    const revisitSessions = await this.sessionRepository.count({
-      where: { reuseCount: MoreThan(0) },
-    });
     const revisitRate = totalSessions > 0
       ? Math.round((revisitSessions / totalSessions) * 100)
       : 0;
 
-    const allSessions = await this.sessionRepository.find({
-      select: ['reuseCount'],
-    });
-    const totalReuseCount = allSessions.reduce((sum, session) => sum + session.reuseCount, 0);
+    const totalReuseCount = Number(reuseSumResult?.sum) || 0;
     const avgRevisitCount = revisitSessions > 0
       ? Math.round((totalReuseCount / revisitSessions) * 10) / 10
       : 0;
 
     // 최근 6시간 세션들의 평균 체류시간 계산
-    const sessionsForStayTime = await this.sessionRepository.find({
-      where: { startedAt: MoreThan(oneHourAgo) },
-      select: ['startedAt', 'endedAt', 'lastHeartbeatAt'],
-    });
-
     let avgStayTime = '0분 0초';
     if (sessionsForStayTime.length > 0) {
       const totalStayTimeMs = sessionsForStayTime.reduce((sum, session) => {
@@ -213,73 +382,7 @@ export class DashboardQueryService {
       };
     });
 
-    // 에러 통계 (최근 6시간)
-    const clientErrorsLastHour = await this.clientErrorRepository.count({
-      where: { createdAt: MoreThan(oneHourAgo) },
-    });
-    const serverErrorsLastHour = await this.serverErrorRepository.count({
-      where: { createdAt: MoreThan(oneHourAgo) },
-    });
-    const criticalErrorsLastHour = await this.criticalErrorRepository.count({
-      where: { createdAt: MoreThan(oneHourAgo) },
-    });
-
-    // 최근 에러 목록
-    const recentServerErrors = await this.serverErrorRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 10,
-    });
-    const recentClientErrors = await this.clientErrorRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 10,
-    });
-
-    // PDF 통계
-    const pdfDownloadSuccess = await this.pdfOperationRepository.count({
-      where: {
-        operationType: PdfOperationType.DOWNLOAD,
-        operationStatus: PdfOperationStatus.SUCCESS,
-      },
-    });
-    const pdfDownloadFailed = await this.pdfOperationRepository.count({
-      where: {
-        operationType: PdfOperationType.DOWNLOAD,
-        operationStatus: PdfOperationStatus.FAILED,
-      },
-    });
-    const pdfPreviewSuccess = await this.pdfOperationRepository.count({
-      where: {
-        operationType: PdfOperationType.PREVIEW,
-        operationStatus: PdfOperationStatus.SUCCESS,
-      },
-    });
-    const pdfPreviewFailed = await this.pdfOperationRepository.count({
-      where: {
-        operationType: PdfOperationType.PREVIEW,
-        operationStatus: PdfOperationStatus.FAILED,
-      },
-    });
-
-    // 네트워크 품질 통계 (최근 6시간, downloadSpeed >= 1 Mbps = GOOD)
-    const networkGood = await this.networkTestRepository.count({
-      where: {
-        createdAt: MoreThan(oneHourAgo),
-        downloadSpeed: MoreThanOrEqual(1),
-      },
-    });
-    const networkPoor = await this.networkTestRepository.count({
-      where: {
-        createdAt: MoreThan(oneHourAgo),
-        downloadSpeed: LessThan(1),
-      },
-    });
-
     // 제출 평균 소요 시간 계산
-    const completedSubmissions = await this.submissionRepository.find({
-      where: { submissionStatus: SubmissionStatus.SUCCESS },
-      select: ['startedAt', 'completedAt'],
-    });
-
     let avgDuration = '0시간 0분 0초';
     if (completedSubmissions.length > 0) {
       const totalDurationMs = completedSubmissions.reduce((sum, submission) => {
@@ -295,66 +398,10 @@ export class DashboardQueryService {
       avgDuration = `${hours}시간 ${minutes}분 ${seconds}초`;
     }
 
-    // 24시간 타임라인 데이터 (매 시간별 세션 수)
-    const timelineData = await this.build24HourTimeline(twentyFourHoursAgo, now);
     const concurrentMax = Math.max(...timelineData.map(d => d.count), totalConcurrent);
     const concurrentAvg = Math.round(
       timelineData.reduce((sum, d) => sum + d.count, 0) / timelineData.length,
     );
-
-    // 최근 6시간 동시접속 Max/Avg 계산
-    const concurrentLastHourStats = await this.calculateLastHourConcurrent(oneHourAgo, now);
-
-    // 원서 제출 이벤트 통계 (최근 6시간 및 전체)
-    const submissionSuccessLastHour = await this.submissionEventRepository.count({
-      where: {
-        eventType: SubmissionEventType.SUBMISSION_SUCCESS,
-        createdAt: MoreThan(oneHourAgo),
-      },
-    });
-    const submissionCancelledLastHour = await this.submissionEventRepository.count({
-      where: {
-        eventType: SubmissionEventType.SUBMISSION_CANCEL,
-        createdAt: MoreThan(oneHourAgo),
-      },
-    });
-    const submissionSuccessTotal = await this.submissionEventRepository.count({
-      where: { eventType: SubmissionEventType.SUBMISSION_SUCCESS },
-    });
-    const submissionCancelledTotal = await this.submissionEventRepository.count({
-      where: { eventType: SubmissionEventType.SUBMISSION_CANCEL },
-    });
-
-    // 서버 타임아웃 집계
-    // 타임아웃 조건: HTTP 408/504 또는 errorCategory/errorCode/message에 'timeout' 포함
-    const serverTimeoutLastHour = await this.serverErrorRepository
-      .createQueryBuilder('error')
-      .where('error.created_at > :oneHourAgo', { oneHourAgo })
-      .andWhere(
-        '(error.http_status IN (:...timeoutStatuses) OR ' +
-        'LOWER(error.error_category) LIKE :timeoutPattern OR ' +
-        'LOWER(error.error_code) LIKE :timeoutPattern OR ' +
-        'LOWER(error.message) LIKE :timeoutPattern)',
-        {
-          timeoutStatuses: [408, 504],
-          timeoutPattern: '%timeout%',
-        }
-      )
-      .getCount();
-
-    const serverTimeoutTotal = await this.serverErrorRepository
-      .createQueryBuilder('error')
-      .where(
-        '(error.http_status IN (:...timeoutStatuses) OR ' +
-        'LOWER(error.error_category) LIKE :timeoutPattern OR ' +
-        'LOWER(error.error_code) LIKE :timeoutPattern OR ' +
-        'LOWER(error.message) LIKE :timeoutPattern)',
-        {
-          timeoutStatuses: [408, 504],
-          timeoutPattern: '%timeout%',
-        }
-      )
-      .getCount();
 
     return {
       realtime: {
@@ -472,32 +519,40 @@ export class DashboardQueryService {
    * - 최근 6시간 동안 매 분마다 동시접속자 수 계산
    * - Max: 최댓값, Avg: 평균값
    *
-   * @param oneHourAgo - 6시간 전 시간
+   * @param sixHoursAgo - 6시간 전 시간
    * @param now - 현재 시간
    * @returns Promise<{ max: number; avg: number }>
    */
   private async calculateLastHourConcurrent(
-    oneHourAgo: Date,
+    sixHoursAgo: Date,
     now: Date,
   ): Promise<{ max: number; avg: number }> {
-    const concurrentCounts: number[] = [];
-
     // 최근 6시간을 5분 간격으로 샘플링 (72개 샘플)
-    // 매 분마다 하면 360번 쿼리라 부하가 있으니 5분 간격으로 최적화
     const intervalMinutes = 5;
     const sampleCount = 360 / intervalMinutes;
 
+    // 단일 쿼리로 관련 세션을 모두 가져옴 (heartbeat 기준 2분 여유 포함)
+    const twoMinutesBeforeStart = new Date(sixHoursAgo.getTime() - 2 * 60 * 1000);
+    const sessions = await this.sessionRepository
+      .createQueryBuilder('session')
+      .select(['session.startedAt', 'session.endedAt', 'session.lastHeartbeatAt'])
+      .where('session.started_at <= :now', { now })
+      .andWhere('(session.ended_at IS NULL OR session.ended_at > :sixHoursAgo)', { sixHoursAgo })
+      .andWhere('session.last_heartbeat_at > :twoMinutesBeforeStart', { twoMinutesBeforeStart })
+      .getMany();
+
+    // JS에서 각 샘플 포인트에 대해 동시접속자 수 계산
+    const concurrentCounts: number[] = [];
     for (let i = 0; i < sampleCount; i++) {
-      const checkTime = new Date(oneHourAgo.getTime() + i * intervalMinutes * 60 * 1000);
+      const checkTime = new Date(sixHoursAgo.getTime() + i * intervalMinutes * 60 * 1000);
       const twoMinutesBefore = new Date(checkTime.getTime() - 2 * 60 * 1000);
 
-      // 해당 시점의 동시접속자 수 = 시작했고, 아직 종료 안했고, 최근 2분 내 heartbeat가 있는 세션
-      const count = await this.sessionRepository
-        .createQueryBuilder('session')
-        .where('session.started_at <= :checkTime', { checkTime })
-        .andWhere('(session.ended_at IS NULL OR session.ended_at > :checkTime)', { checkTime })
-        .andWhere('session.last_heartbeat_at > :twoMinutesBefore', { twoMinutesBefore })
-        .getCount();
+      const count = sessions.filter((s) => {
+        const startedBefore = s.startedAt <= checkTime;
+        const notEndedYet = !s.endedAt || s.endedAt > checkTime;
+        const recentHeartbeat = s.lastHeartbeatAt > twoMinutesBefore;
+        return startedBefore && notEndedYet && recentHeartbeat;
+      }).length;
 
       concurrentCounts.push(count);
     }
@@ -525,17 +580,23 @@ export class DashboardQueryService {
     startTime: Date,
     endTime: Date,
   ): Promise<Array<{ time: string; count: number }>> {
-    const timeline: Array<{ time: string; count: number }> = [];
+    // 단일 쿼리로 최근 24시간 세션을 모두 가져옴
+    const sessions = await this.sessionRepository.find({
+      where: {
+        startedAt: Between(startTime, endTime),
+      },
+      select: ['startedAt'],
+    });
 
+    // JS에서 시간별로 groupBy 집계
+    const timeline: Array<{ time: string; count: number }> = [];
     for (let i = 0; i < 24; i++) {
       const hourStart = new Date(startTime.getTime() + i * 60 * 60 * 1000);
       const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
 
-      const count = await this.sessionRepository.count({
-        where: {
-          startedAt: Between(hourStart, hourEnd),
-        },
-      });
+      const count = sessions.filter(
+        (s) => s.startedAt >= hourStart && s.startedAt < hourEnd,
+      ).length;
 
       const hourLabel = String(hourStart.getHours()).padStart(2, '0');
       timeline.push({
