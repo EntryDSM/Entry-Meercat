@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AuthService } from './domain/auth/service/AuthService';
@@ -10,8 +10,12 @@ async function bootstrap() {
     // 관리자 계정 초기화
     await initializeAdminAccount(app);
 
-    // CORS 설정 - 모든 출처 허용
-    app.enableCors();
+    // CORS 설정
+    app.enableCors({
+        origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+        credentials: true,
+    });
 
     // 글로벌 검증 파이프
     app.useGlobalPipes(
@@ -58,21 +62,27 @@ async function bootstrap() {
  * - 이미 존재하면 생성하지 않음
  * - 앱 시작 시 자동 실행
  */
-async function initializeAdminAccount(app: any): Promise<void> {
+async function initializeAdminAccount(app: INestApplication): Promise<void> {
+    const username = process.env.ADMIN_USERNAME;
+    const password = process.env.ADMIN_PASSWORD;
+
+    if (!username || !password) {
+        console.warn('ADMIN_USERNAME 또는 ADMIN_PASSWORD 환경변수가 설정되지 않아 관리자 계정 초기화를 건너뜁니다.');
+        return;
+    }
+
     const authService = app.get(AuthService);
-    const username = process.env.ADMIN_USERNAME || 'admin';
-    const password = process.env.ADMIN_PASSWORD || 'admin123';
 
     try {
         const existingAdmin = await authService.findAdminByUsername(username);
         if (!existingAdmin) {
             await authService.createAdmin(username, password);
-            console.log(`✅ 관리자 계정이 생성되었습니다: ${username}`);
+            console.log(`관리자 계정이 생성되었습니다: ${username}`);
         } else {
-            console.log(`✅ 관리자 계정이 이미 존재합니다: ${username}`);
+            console.log(`관리자 계정이 이미 존재합니다: ${username}`);
         }
     } catch (error) {
-        console.error('❌ 관리자 계정 초기화 실패:', error.message);
+        console.error('관리자 계정 초기화 실패:', error instanceof Error ? error.message : String(error));
     }
 }
 
