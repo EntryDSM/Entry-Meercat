@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Session, PageType, UserStatus } from '../entity/Session.entity';
+import { Session, PageType, UserStatus, SessionEndReason } from '../entity/Session.entity';
 import { StartSessionRequest } from '../presentation/dto/request/StartSessionRequest';
 import { StartSessionResponse } from '../presentation/dto/response/StartSessionResponse';
 import { SessionNotFoundException } from '../exception/SessionException';
@@ -125,7 +125,7 @@ export class SessionService {
    * @param sessionId - 세션 ID
    * @param reason - 종료 이유
    */
-  async endSession(sessionId: string, reason: string): Promise<void> {
+  async endSession(sessionId: string, reason: SessionEndReason): Promise<void> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId },
     });
@@ -167,10 +167,10 @@ export class SessionService {
       osType = 'iOS';
 
     let browser = 'unknown';
-    if (ua.includes('chrome')) browser = 'Chrome';
+    if (ua.includes('edge') || ua.includes('edg/')) browser = 'Edge';
+    else if (ua.includes('chrome') && !ua.includes('chromium')) browser = 'Chrome';
     else if (ua.includes('firefox')) browser = 'Firefox';
     else if (ua.includes('safari')) browser = 'Safari';
-    else if (ua.includes('edge')) browser = 'Edge';
 
     return { deviceType, osType, browser };
   }
