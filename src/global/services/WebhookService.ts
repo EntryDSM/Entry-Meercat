@@ -25,38 +25,12 @@ export class WebhookService {
    *
    * @param payload - 에러 데이터
    */
-  async sendClientErrorWebhook(payload: any): Promise<void> {
-    if (!this.clientErrorWebhookUrl) {
-      this.logger.debug('클라이언트 에러 웹훅 URL이 설정되지 않았습니다.');
-      return;
-    }
-
-    const discordPayload = {
-      embeds: [
-        {
-          title: '클라이언트 에러가 발생했습니다',
-          description: '클라이언트 오류.',
-          color: 0xffa500, // Orange
-          fields: [
-            {
-              name: 'Error Details',
-              value: '```json\n' + JSON.stringify(payload, null, 2) + '\n```',
-            },
-          ],
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    };
-
-    try {
-      await axios.post(this.clientErrorWebhookUrl, discordPayload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 5000,
-      });
-      this.logger.log('클라이언트 에러 웹훅 전송 성공');
-    } catch (error) {
-      this.logger.error('클라이언트 에러 웹훅 전송 실패:', error.message);
-    }
+  async sendClientErrorWebhook(payload: Record<string, unknown>): Promise<void> {
+    await this.sendWebhook(this.clientErrorWebhookUrl, payload, '클라이언트 에러', {
+      title: '클라이언트 에러가 발생했습니다',
+      description: '클라이언트 오류.',
+      color: 0xffa500,
+    });
   }
 
   /**
@@ -64,18 +38,39 @@ export class WebhookService {
    *
    * @param payload - 에러 데이터
    */
-  async sendServerErrorWebhook(payload: any): Promise<void> {
-    if (!this.serverErrorWebhookUrl) {
-      this.logger.debug('서버 에러 웹훅 URL이 설정되지 않았습니다.');
+  async sendServerErrorWebhook(payload: Record<string, unknown>): Promise<void> {
+    await this.sendWebhook(this.serverErrorWebhookUrl, payload, '서버 에러', {
+      title: '서버 오류!',
+      description: '서버 오류가 감지되었습니다.',
+      color: 0xff0000,
+    });
+  }
+
+  /**
+   * 공통 웹훅 전송
+   *
+   * @param url - 웹훅 URL
+   * @param payload - 에러 데이터
+   * @param logLabel - 로그 라벨
+   * @param embed - Discord embed 설정
+   */
+  private async sendWebhook(
+    url: string | null,
+    payload: Record<string, unknown>,
+    logLabel: string,
+    embed: { title: string; description: string; color: number },
+  ): Promise<void> {
+    if (!url) {
+      this.logger.debug(`${logLabel} 웹훅 URL이 설정되지 않았습니다.`);
       return;
     }
 
     const discordPayload = {
       embeds: [
         {
-          title: '서버 오류!',
-          description: '서버 오류가 감지되었습니다.',
-          color: 0xff0000, // Red
+          title: embed.title,
+          description: embed.description,
+          color: embed.color,
           fields: [
             {
               name: 'Error Details',
@@ -88,13 +83,13 @@ export class WebhookService {
     };
 
     try {
-      await axios.post(this.serverErrorWebhookUrl, discordPayload, {
+      await axios.post(url, discordPayload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 5000,
       });
-      this.logger.log('서버 에러 웹훅 전송 성공');
+      this.logger.log(`${logLabel} 웹훅 전송 성공`);
     } catch (error) {
-      this.logger.error('서버 에러 웹훅 전송 실패:', error.message);
+      this.logger.error(`${logLabel} 웹훅 전송 실패:`, error instanceof Error ? error.message : String(error));
     }
   }
 }
