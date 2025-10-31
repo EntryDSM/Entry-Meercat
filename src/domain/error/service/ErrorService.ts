@@ -176,6 +176,42 @@ export class ErrorService {
   }
 
   /**
+   * 클라이언트 에러 해결 처리
+   *
+   * @param errorId - 에러 ID
+   */
+  async resolveClientError(errorId: number): Promise<void> {
+    const error = await this.clientErrorRepository.findOne({
+      where: { id: errorId },
+    });
+
+    if (!error) {
+      throw new NotFoundException('Client error not found');
+    }
+
+    error.resolve();
+    await this.clientErrorRepository.save(error);
+  }
+
+  /**
+   * 서버 에러 해결 처리
+   *
+   * @param errorId - 에러 ID
+   */
+  async resolveServerError(errorId: number): Promise<void> {
+    const error = await this.serverErrorRepository.findOne({
+      where: { id: errorId },
+    });
+
+    if (!error) {
+      throw new NotFoundException('Server error not found');
+    }
+
+    error.resolve();
+    await this.serverErrorRepository.save(error);
+  }
+
+  /**
    * 에러 목록 조회 (관리자용)
    *
    * @description
